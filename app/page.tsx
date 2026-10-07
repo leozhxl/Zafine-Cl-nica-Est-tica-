@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import {
   ArrowRight,
+  AudioWaveform,
   Award,
   BadgeCheck,
   BadgePercent,
@@ -17,8 +18,8 @@ import {
   Flower2,
   Gift,
   GraduationCap,
-  Heart,
   HeartHandshake,
+  Layers,
   MapPin,
   Menu,
   MessageCircle,
@@ -26,8 +27,11 @@ import {
   Phone,
   Rocket,
   Ruler,
+  ScanFace,
   ShieldCheck,
+  Smile,
   Star,
+  Syringe,
   Target,
   TrendingUp,
   User,
@@ -102,9 +106,14 @@ const courseStrip = [
 const whatsappLink = 'https://wa.me/5548991074845?text=Ol%C3%A1%2C%20vim%20pelo%20site%20da%20Zafine%20e%20quero%20agendar%20uma%20avalia%C3%A7%C3%A3o.'
 
 const services = [
-  { icon: Zap, title: 'Depilação a laser', text: 'Tecnologia avançada para reduzir os pelos com segurança, conforto e resultados visíveis.' },
-  { icon: Zap, title: 'Protocolos personalizados', text: 'Cada pele é única. Avaliamos suas necessidades para criar o tratamento ideal para você.' },
-  { icon: Heart, title: 'Cuidado com a pele', text: 'Um momento de autocuidado que combina praticidade, autoestima e liberdade.' },
+  { icon: Zap, title: 'Depilação a laser', text: 'Nossa especialidade: tecnologia avançada para reduzir os pelos com segurança, conforto e resultados duradouros.' },
+  { icon: PersonStanding, title: 'Estética corporal', text: 'Protocolos para modelar o corpo, reduzir medidas e valorizar o seu contorno.' },
+  { icon: Waves, title: 'Flacidez', text: 'Tratamentos que estimulam o colágeno para uma pele mais firme e com mais sustentação.' },
+  { icon: Layers, title: 'Estrias', text: 'Técnicas que melhoram a textura e a aparência das estrias, deixando a pele mais uniforme.' },
+  { icon: ScanFace, title: 'Rejuvenescimento facial', text: 'Cuidados para suavizar linhas, devolver o viço e renovar a pele do rosto.' },
+  { icon: Syringe, title: 'Lipo enzimática', text: 'Aplicação de enzimas que ajudam a reduzir a gordura localizada, sem cirurgia.' },
+  { icon: AudioWaveform, title: 'Radiofrequência', text: 'Calor controlado que firma a pele, melhora o contorno e ativa a produção de colágeno.' },
+  { icon: Smile, title: 'Lipo de papada', text: 'Redução da gordura sob o queixo para um contorno facial mais definido.' },
 ]
 
 const faqs = [
@@ -179,7 +188,7 @@ export default function Page() {
 
       <section id="sobre" className="section about-section"><div className="container about-grid"><div className="about-visual"></div><div className="about-copy"><SectionLabel>Sobre a Zafine</SectionLabel><h2>Mais do que estética. <em>É cuidar de você por inteiro.</em></h2><p>A Zafine nasceu para transformar cada cuidado com a sua pele e o seu corpo em uma experiência de bem-estar, confiança e autoestima. Da depilação a laser aos tratamentos faciais e corporais, cada detalhe foi pensado para você se sentir acolhida desde o primeiro contato.</p><p>Unimos profissionais treinadas, tecnologia avançada e um atendimento próximo para entregar resultados que você vê e sente — em um só lugar, sem complicação. São 9 anos como referência em depilação a laser em Sombrio e mais de 130 mil clientes atendidos.</p><a className="text-link" href={whatsappLink} target="_blank" rel="noreferrer">Conheça a Zafine <ArrowRight size={16} /></a></div></div></section>
 
-      <section id="servicos" className="section services-section"><div className="container"><div className="section-heading"><div><SectionLabel>Nossos cuidados</SectionLabel><h2>Seu momento de <em>se cuidar.</em></h2></div><p>Tratamentos pensados para simplificar sua rotina e valorizar a pele que você habita.</p></div><div className="services-grid">{services.map(({ icon: Icon, title, text }) => <article className="service-card" key={title}><div className="service-icon"><Icon size={22} /></div><h3>{title}</h3><p>{text}</p><a href={whatsappLink} target="_blank" rel="noreferrer" aria-label={`Saiba mais sobre ${title}`}><ArrowRight size={18} /></a></article>)}</div></div></section>
+      <section id="servicos" className="section services-section"><div className="container"><div className="section-heading"><div><SectionLabel>Nossos cuidados</SectionLabel><h2>Seu momento de <em>se cuidar.</em></h2></div><p>Da depilação a laser, nossa especialidade, aos tratamentos corporais e faciais: tudo o que você precisa em um só lugar.</p></div><div className="services-grid">{services.map(({ icon: Icon, title, text }) => <article className="service-card" key={title}><div className="service-icon"><Icon size={22} /></div><h3>{title}</h3><p>{text}</p><a href={whatsappLink} target="_blank" rel="noreferrer" aria-label={`Saiba mais sobre ${title}`}><ArrowRight size={18} /></a></article>)}</div></div></section>
 
       <section className="difference-section"><div className="container difference-grid"><div><SectionLabel>Por que a Zafine?</SectionLabel><h2>Resultado que você sente. <em>Confiança que você vê.</em></h2><p className="difference-intro">A gente acredita que cuidar de si não precisa ser complicado. Por isso, criamos uma experiência simples, segura e feita para caber na sua vida.</p><ul className="check-list"><li><span><Check size={15} /></span><div><strong>Profissionais treinadas</strong><p>Conhecimento e atenção em cada sessão.</p></div></li><li><span><Check size={15} /></span><div><strong>Tecnologia avançada</strong><p>Equipamentos modernos para mais conforto.</p></div></li><li><span><Check size={15} /></span><div><strong>Atendimento humano</strong><p>Você é ouvida, respeitada e acolhida.</p></div></li></ul></div><div className="results-info"><span className="results-kicker">Resultados reais</span><h3>Modelagem corporal</h3><p>Protocolo personalizado que trabalha gordura localizada, flacidez e contorno do corpo, combinando tecnologia e técnicas manuais de acordo com a avaliação de cada cliente.</p><ul className="results-benefits">{results.map(({ icon: Icon, title, text }) => <li key={title}><span><Icon size={17} /></span><div><strong>{title}</strong><small>{text}</small></div></li>)}</ul></div></div><div className="container results-grid">{resultCases.map(({ id, label, pairs }) => <figure className="results-card" key={id}><div className="results-photos">{pairs.map((n) => <div className="results-pair" key={n}><div><img src={`/resultados/modelagem-${n}-antes.jpg`} alt={`Antes da modelagem corporal — ${label}`} loading="lazy" /><span>Antes</span></div><div><img src={`/resultados/modelagem-${n}-depois.jpg`} alt={`Depois da modelagem corporal — ${label}`} loading="lazy" /><span className="after">Depois</span></div></div>)}</div><figcaption>{label}</figcaption></figure>)}</div><p className="container results-note">Fotos de clientes reais da Zafine, publicadas com autorização. Os resultados variam de pessoa para pessoa.</p></section>
 
