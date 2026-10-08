@@ -89,7 +89,7 @@ export default async function DashboardPage() {
               ))}
             </ul>
           )}
-          <Link className="crm-btn ghost" href="/admin/ia?aba=conversas">Ver conversas →</Link>
+          <Link className="crm-btn ghost" href="/admin/conversas">Ver conversas →</Link>
         </div>
 
         <div className="crm-card">

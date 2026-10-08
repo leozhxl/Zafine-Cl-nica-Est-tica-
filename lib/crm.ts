@@ -53,21 +53,6 @@ export type AiSettings = {
   hours_end: string
 }
 
-export type MenuOption = { label: string; reply: string; handoff: boolean }
-
-export type BotMenu = {
-  enabled: boolean
-  welcome: string
-  options: MenuOption[]
-  footer: string
-  fallback: string
-}
-
-export const optionKey = (index: number) => String(index + 1)
-
-export const menuMessage = (menu: BotMenu, intro = menu.welcome) =>
-  `${intro}\n\n${menu.options.map((o, i) => `*${optionKey(i)}* - ${o.label}`).join('\n')}`
-
 export const stages: { value: Stage; label: string }[] = [
   { value: 'novo', label: 'Novo lead' },
   { value: 'contatado', label: 'Contatado' },

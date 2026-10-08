@@ -26,7 +26,7 @@ function summary(data: NodeData) {
     case 'message': return data.text.trim() ? data.text : 'Escreva a mensagem…'
     case 'wait': return data.timeoutMinutes ? `Tempo limite: ${formatMinutes(data.timeoutMinutes)}` : 'Sem tempo limite'
     case 'condition': return `${data.branches.length} opç${data.branches.length === 1 ? 'ão' : 'ões'}`
-    case 'ai': return 'Responde usando o roteiro da aba WhatsApp → IA'
+    case 'ai': return 'Responde usando o roteiro da aba Conversas → IA'
     case 'action':
       if (data.action === 'set_stage') return `${actionLabels.set_stage}: ${stageLabel(data.value as never)}`
       if (data.action === 'set_interest') return `${actionLabels.set_interest}: ${data.value || 'resposta da cliente'}`
@@ -191,6 +191,7 @@ function Editor({ agent }: { agent: Agent }) {
         <input className="crm-agent-name" value={name} onChange={(e) => { setName(e.target.value); setDirty(true) }} aria-label="Nome do agente" />
         <label className="crm-check"><input type="checkbox" checked={enabled} onChange={(e) => { setEnabled(e.target.checked); setDirty(true) }} /> Ativo</label>
         {message && <span className={`crm-badge ${message.type === 'ok' ? 'fechado' : 'perdido'}`}>{message.text}</span>}
+        <Link href="/admin/ajuda#blocos" target="_blank" className="crm-btn ghost">Ajuda dos blocos</Link>
         <button className="crm-btn" onClick={save} disabled={saving} style={{ marginLeft: 'auto' }}><Save size={15} /> {saving ? 'Salvando…' : dirty ? 'Salvar alterações' : 'Salvo'}</button>
       </div>
 
@@ -298,7 +299,7 @@ function BlockProps({ node, onChange, onRemove }: { node: BlockNode; onChange: (
 
       {data.kind === 'ai' && (
         <p className="crm-sub" style={{ margin: 0, lineHeight: 1.6 }}>
-          A IA lê a conversa e responde usando o <b>roteiro</b>, as <b>respostas prontas</b> e as informações da aba <Link href="/admin/ia?aba=ia" style={{ color: 'var(--blue)' }}>WhatsApp → IA</Link>.
+          A IA lê a conversa e responde usando o <b>roteiro</b>, as <b>respostas prontas</b> e as informações da aba <Link href="/admin/conversas?aba=ia" style={{ color: 'var(--blue)' }}>Conversas → IA e roteiro</Link>.
           Se ela decidir passar para uma atendente, o fluxo para. Precisa da IA ligada e com créditos; sem isso, o bloco é pulado.
         </p>
       )}

@@ -44,7 +44,7 @@ export const newId = () => Math.random().toString(36).slice(2, 10)
 
 export function defaultData(kind: NodeData['kind']): NodeData {
   switch (kind) {
-    case 'start': return { kind, trigger: 'first_message' }
+    case 'start': return { kind, trigger: 'any_message' }
     case 'message': return { kind, text: '' }
     case 'wait': return { kind, timeoutMinutes: null }
     case 'condition': return { kind, branches: [{ id: newId(), label: 'Opção 1', keywords: '1' }] }
@@ -59,7 +59,7 @@ export function templateFlow(): Flow {
   const e = (source: string, target: string, sourceHandle?: string): FlowEdge => ({ id: `${source}-${sourceHandle ?? 'next'}-${target}`, source, sourceHandle: sourceHandle ?? null, target })
   return {
     nodes: [
-      n('inicio', 0, 160, { kind: 'start', trigger: 'first_message' }),
+      n('inicio', 0, 160, { kind: 'start', trigger: 'any_message' }),
       n('boas-vindas', 260, 140, { kind: 'message', text: 'Olá, {nome}! 💙 Seja bem-vinda à *Zafine Clínica Estética Avançada*.\nComo podemos te ajudar? Responda com o *número*:\n\n*1* - Conhecer os tratamentos\n*2* - Agendar avaliação gratuita\n*3* - Falar com uma atendente' }),
       n('espera', 560, 160, { kind: 'wait', timeoutMinutes: 720 }),
       n('opcoes', 840, 120, { kind: 'condition', branches: [
@@ -97,6 +97,6 @@ export function templateFlow(): Flow {
 }
 
 export const emptyFlow = (): Flow => ({
-  nodes: [{ id: 'inicio', type: 'start', position: { x: 0, y: 0 }, data: { kind: 'start', trigger: 'first_message' } }],
+  nodes: [{ id: 'inicio', type: 'start', position: { x: 0, y: 0 }, data: { kind: 'start', trigger: 'any_message' } }],
   edges: [],
 })

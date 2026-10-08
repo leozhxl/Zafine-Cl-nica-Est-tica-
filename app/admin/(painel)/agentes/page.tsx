@@ -55,7 +55,7 @@ export default function AgentesPage() {
       <div className="crm-header">
         <div>
           <h1>Agentes</h1>
-          <p>Monte o caminho da conversa em blocos. O agente ativo responde as clientes no WhatsApp.</p>
+          <p>Monte o caminho da conversa em blocos. O agente ativo responde as clientes no WhatsApp. <Link href="/admin/ajuda#agentes" style={{ color: 'var(--blue)' }}>Como funciona?</Link></p>
         </div>
         {!missingTable && <button className="crm-btn" onClick={() => setCreating(true)}><Plus size={16} /> Novo agente</button>}
       </div>
@@ -86,7 +86,7 @@ export default function AgentesPage() {
             </ul>
           )}
           <p className="crm-sub" style={{ marginTop: 14, lineHeight: 1.6 }}>
-            Só um agente fica ativo por vez. Quando há um agente ativo, ele responde primeiro; se ele não responder (por exemplo, a cliente já passou por ele), entra o Menu automático ou a IA da aba WhatsApp.
+            Só um agente fica ativo por vez. Quando ele não responde (por exemplo, a cliente já passou pelo fluxo), a IA da aba Conversas responde sozinha, se estiver ligada.
           </p>
         </div>
       )}

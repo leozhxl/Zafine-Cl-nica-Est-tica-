@@ -1,8 +1,7 @@
 'use server'
 
 import { sendWhatsappText } from '@/lib/ai-whatsapp'
-import type { AiSettings, BotMenu, Client, WhatsappMessage } from '@/lib/crm'
-import { botReply } from '@/lib/whatsapp-bot'
+import type { Client } from '@/lib/crm'
 import { createClient } from '@/lib/supabase/server'
 
 async function requireUser() {
@@ -10,17 +9,6 @@ async function requireUser() {
   const { data } = await supabase.auth.getUser()
   if (!data.user) throw new Error('Não autorizado.')
   return supabase
-}
-
-export async function simulateReply(menu: BotMenu, ai: AiSettings, conversation: Pick<WhatsappMessage, 'direction' | 'body'>[]) {
-  await requireUser()
-  try {
-    const history = conversation.map((m, i) => ({ ...m, id: String(i), client_id: null, phone: '', from_ai: false, created_at: '' }))
-    const result = await botReply({ menu, ai, aiAllowed: ai.enabled, history })
-    return { ok: true as const, result }
-  } catch (error) {
-    return { ok: false as const, error: error instanceof Error ? error.message : 'Erro ao gerar resposta.' }
-  }
 }
 
 export async function sendManualMessage(clientId: string, body: string) {

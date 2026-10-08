@@ -1,46 +1,40 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowDown, ArrowUp, Plus, RotateCcw, Send, Trash2 } from 'lucide-react'
-import { type AiSettings, type BotMenu, type Client, type MenuOption, type WhatsappMessage, formatPhone, menuMessage } from '@/lib/crm'
+import { ArrowDown, ArrowUp, Plus, Send, Trash2 } from 'lucide-react'
+import { type AiSettings, type Client, type WhatsappMessage, formatPhone } from '@/lib/crm'
 import { type Agent, blockInfo } from '@/lib/agent-flow'
 import { createClient } from '@/lib/supabase/client'
-import { sendManualMessage, simulateReply } from './actions'
+import { sendManualMessage } from './actions'
 
 type Status = { anthropic: boolean; whatsapp: boolean; webhook: boolean; serviceRole: boolean }
-export type Tab = 'menu' | 'ia' | 'testar' | 'conversas'
+export type Tab = 'conversas' | 'ia' | 'conexao'
 
 const tabs: { value: Tab; label: string }[] = [
-  { value: 'menu', label: 'Menu automático' },
-  { value: 'ia', label: 'IA (opcional)' },
-  { value: 'testar', label: 'Testar' },
   { value: 'conversas', label: 'Conversas' },
+  { value: 'ia', label: 'IA e roteiro' },
+  { value: 'conexao', label: 'Conexão com o WhatsApp' },
 ]
 
-export function IaPanel({ status, webhookUrl, initialTab }: { status: Status; webhookUrl: string; initialTab: Tab }) {
+export function ConversasPanel({ status, webhookUrl, initialTab }: { status: Status; webhookUrl: string; initialTab: Tab }) {
   const [tab, setTab] = useState<Tab>(initialTab)
   const [settings, setSettings] = useState<AiSettings | null>(null)
-  const [menu, setMenu] = useState<BotMenu | null>(null)
-  const [missingTable, setMissingTable] = useState(false)
 
   useEffect(() => {
-    const supabase = createClient()
-    supabase.from('ai_settings').select('*').eq('id', 1).single().then(({ data }) => setSettings(data as AiSettings))
-    supabase.from('bot_menu').select('*').eq('id', 1).maybeSingle().then(({ data, error }) => {
-      if (error || !data) setMissingTable(true)
-      else setMenu(data as BotMenu)
-    })
+    createClient().from('ai_settings').select('*').eq('id', 1).single().then(({ data }) => setSettings(data as AiSettings))
   }, [])
+
+  const connected = status.whatsapp && status.webhook && status.serviceRole
 
   return (
     <>
       <div className="crm-header">
         <div>
-          <h1>Atendimento no WhatsApp</h1>
-          <p>Respostas automáticas para as clientes: menu de opções e, se quiser, IA.</p>
+          <h1>Conversas</h1>
+          <p>Acompanhe e responda as clientes do WhatsApp. O atendimento automático é montado em <a href="/admin/agentes" style={{ color: 'var(--blue)' }}>Agentes</a>. <a href="/admin/ajuda#conversas" style={{ color: 'var(--blue)' }}>Ajuda</a></p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          {menu && <span className={`crm-badge ${menu.enabled ? 'fechado' : 'perdido'}`}>{menu.enabled ? 'Menu ligado' : 'Menu desligado'}</span>}
+          <span className={`crm-badge ${connected ? 'fechado' : 'perdido'}`}>{connected ? 'WhatsApp conectado' : 'WhatsApp não conectado'}</span>
           {settings && <span className={`crm-badge ${settings.enabled ? 'fechado' : 'perdido'}`}>{settings.enabled ? 'IA ligada' : 'IA desligada'}</span>}
         </div>
       </div>
@@ -49,21 +43,13 @@ export function IaPanel({ status, webhookUrl, initialTab }: { status: Status; we
         {tabs.map((t) => <button key={t.value} className={tab === t.value ? 'active' : ''} onClick={() => setTab(t.value)}>{t.label}</button>)}
       </div>
 
-      {missingTable && tab !== 'conversas' && tab !== 'ia' && (
-        <div className="crm-alert">Falta criar a tabela do menu: rode o arquivo <b>supabase/menu.sql</b> no SQL Editor do Supabase e recarregue a página.</div>
-      )}
-
-      {!settings ? <p className="crm-empty">Carregando…</p> : (
-        <>
-          {tab === 'menu' && menu && <MenuTab menu={menu} onChange={setMenu} status={status} webhookUrl={webhookUrl} />}
-          {tab === 'ia' && <ConfigTab settings={settings} onChange={setSettings} status={status} />}
-          {tab === 'testar' && menu && <TestTab menu={menu} settings={settings} />}
-          {tab === 'conversas' && <ConversationsTab />}
-        </>
-      )}
+      {tab === 'conversas' && <ConversationsTab />}
+      {tab === 'ia' && (settings ? <ConfigTab settings={settings} onChange={setSettings} status={status} /> : <p className="crm-empty">Carregando…</p>)}
+      {tab === 'conexao' && <div style={{ maxWidth: 720 }}><IntegrationCard status={status} webhookUrl={webhookUrl} /></div>}
     </>
   )
 }
+
 
 function IntegrationCard({ status, webhookUrl }: { status: Status; webhookUrl: string }) {
   return (
@@ -77,85 +63,6 @@ function IntegrationCard({ status, webhookUrl }: { status: Status; webhookUrl: s
       <p className="crm-sub" style={{ marginTop: 14, lineHeight: 1.6 }}>
         As chaves ficam nas variáveis de ambiente do servidor (Vercel → Settings → Environment Variables), nunca no banco. Depois de alterar, faça um novo deploy.
       </p>
-    </div>
-  )
-}
-
-function MenuTab({ menu, onChange, status, webhookUrl }: { menu: BotMenu; onChange: (m: BotMenu) => void; status: Status; webhookUrl: string }) {
-  const [form, setForm] = useState(menu)
-  const [message, setMessage] = useState<{ type: 'ok' | 'error'; text: string } | null>(null)
-  const [saving, setSaving] = useState(false)
-  const set = <K extends keyof BotMenu>(key: K, value: BotMenu[K]) => setForm((f) => ({ ...f, [key]: value }))
-  const setOption = (index: number, patch: Partial<MenuOption>) => set('options', form.options.map((o, i) => (i === index ? { ...o, ...patch } : o)))
-  const moveOption = (index: number, delta: number) => {
-    const options = [...form.options]
-    const [item] = options.splice(index, 1)
-    options.splice(index + delta, 0, item)
-    set('options', options)
-  }
-
-  async function save(event: React.FormEvent) {
-    event.preventDefault()
-    setSaving(true)
-    const { error } = await createClient().from('bot_menu').update({ ...form, updated_at: new Date().toISOString() }).eq('id', 1)
-    setSaving(false)
-    if (error) return setMessage({ type: 'error', text: error.message })
-    onChange(form)
-    setMessage({ type: 'ok', text: 'Menu salvo.' })
-  }
-
-  return (
-    <div className="crm-grid cols-2" style={{ alignItems: 'start' }}>
-      <form className="crm-card" onSubmit={save}>
-        <h2>Menu de opções</h2>
-        {message && <div className={`crm-alert ${message.type}`}>{message.text}</div>}
-        <div className="crm-form">
-          <label className="crm-check full"><input type="checkbox" checked={form.enabled} onChange={(e) => set('enabled', e.target.checked)} /> <strong>Responder clientes com o menu automático</strong></label>
-          <label className="crm-field full">Mensagem de boas-vindas
-            <small>Enviada na primeira mensagem da cliente, seguida da lista de opções. Use *texto* para negrito.</small>
-            <textarea rows={3} value={form.welcome} onChange={(e) => set('welcome', e.target.value)} />
-          </label>
-        </div>
-
-        <h2 style={{ marginTop: 22 }}>Opções</h2>
-        {form.options.map((option, i) => (
-          <div key={i} className="crm-card" style={{ padding: 14, marginBottom: 10, background: '#fafcfc' }}>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
-              <span className="crm-badge">{i + 1}</span>
-              <input value={option.label} onChange={(e) => setOption(i, { label: e.target.value })} placeholder="Nome da opção" required />
-              <button type="button" className="crm-icon-btn" disabled={i === 0} onClick={() => moveOption(i, -1)} aria-label="Subir"><ArrowUp size={15} /></button>
-              <button type="button" className="crm-icon-btn" disabled={i === form.options.length - 1} onClick={() => moveOption(i, 1)} aria-label="Descer"><ArrowDown size={15} /></button>
-              <button type="button" className="crm-icon-btn" onClick={() => set('options', form.options.filter((_, j) => j !== i))} aria-label="Remover"><Trash2 size={15} /></button>
-            </div>
-            <textarea rows={4} value={option.reply} onChange={(e) => setOption(i, { reply: e.target.value })} placeholder="Resposta enviada quando a cliente escolher esta opção" required />
-            <label className="crm-check" style={{ marginTop: 8 }}><input type="checkbox" checked={option.handoff} onChange={(e) => setOption(i, { handoff: e.target.checked })} /> Passar para uma atendente depois de responder (pausa o robô para esta cliente)</label>
-          </div>
-        ))}
-        <button type="button" className="crm-btn secondary" onClick={() => set('options', [...form.options, { label: '', reply: '', handoff: false }])}><Plus size={15} /> Adicionar opção</button>
-
-        <div className="crm-form" style={{ marginTop: 22 }}>
-          <label className="crm-field full">Rodapé após cada resposta<input value={form.footer} onChange={(e) => set('footer', e.target.value)} /></label>
-          <label className="crm-field full">Quando a cliente digitar algo que não está no menu
-            <small>Enviado junto com a lista de opções. Se a IA estiver ligada, ela responde no lugar desta mensagem.</small>
-            <textarea rows={2} value={form.fallback} onChange={(e) => set('fallback', e.target.value)} />
-          </label>
-        </div>
-        <div className="crm-modal-foot"><div><button className="crm-btn" disabled={saving}>{saving ? 'Salvando…' : 'Salvar menu'}</button></div></div>
-      </form>
-
-      <div className="crm-grid">
-        <div className="crm-card">
-          <h2>Como a cliente vê</h2>
-          <div className="crm-chat" style={{ minHeight: 0 }}>
-            <div className="crm-bubble">Oi, boa tarde!</div>
-            <div className="crm-bubble out">{menuMessage(form)}</div>
-          </div>
-          <p className="crm-sub" style={{ marginTop: 10, lineHeight: 1.6 }}>
-            A cliente pode responder com o número ou o nome da opção. “0” ou “menu” mostram as opções de novo. Quando passa para uma atendente, o robô fica pausado para aquela cliente e volta sozinho se a conversa ficar parada por 24h.
-          </p>
-        </div>
-        <IntegrationCard status={status} webhookUrl={webhookUrl} />
-      </div>
     </div>
   )
 }
@@ -185,7 +92,7 @@ function ConfigTab({ settings, onChange, status }: { settings: AiSettings; onCha
         {message && <div className={`crm-alert ${message.type}`}>{message.text}</div>}
         {form.enabled && !status.anthropic && <div className="crm-alert">A IA está ligada, mas falta a chave da API do Claude.</div>}
         <div className="crm-form">
-          <label className="crm-check full"><input type="checkbox" checked={form.enabled} onChange={(e) => set('enabled', e.target.checked)} /> <strong>Usar IA para mensagens fora do menu</strong></label>
+          <label className="crm-check full"><input type="checkbox" checked={form.enabled} onChange={(e) => set('enabled', e.target.checked)} /> <strong>Ligar a IA</strong></label>
           <label className="crm-field full">Nome da assistente<input value={form.assistant_name} onChange={(e) => set('assistant_name', e.target.value)} /></label>
           <label className="crm-field full">Instruções e tom de voz
             <small>Como ela deve se comportar, o que deve ou não falar, qual o objetivo da conversa.</small>
@@ -254,15 +161,14 @@ function ConfigTab({ settings, onChange, status }: { settings: AiSettings; onCha
         <h2>Sobre a IA</h2>
         <div className="crm-status"><span className={`crm-dot ${status.anthropic ? 'on' : ''}`} /> Chave da API do Claude (ANTHROPIC_API_KEY)</div>
         <p className="crm-sub" style={{ marginTop: 12, lineHeight: 1.6 }}>
-          A IA é opcional e paga por uso (créditos na Anthropic). Com o menu ligado, ela só responde quando a cliente escreve algo que não é uma opção do menu.
-          Se a IA falhar (por exemplo, sem créditos), o robô responde com o menu.
+          A IA é opcional e paga por uso (créditos na Anthropic). Ela responde nos blocos “Resposta com IA” dos agentes e, quando não há agente ativo (ou ele não responde), responde sozinha usando este roteiro.
         </p>
         <h2 style={{ marginTop: 20 }}>Dicas para o roteiro</h2>
         <ul className="crm-sub" style={{ lineHeight: 1.7, paddingLeft: 18, margin: 0 }}>
           <li>Escreva cada etapa como uma ordem curta: “Pergunte…”, “Explique…”, “Convide…”.</li>
           <li>Na etapa em que a equipe deve assumir, escreva “passe para uma atendente”.</li>
           <li>Use as respostas prontas para o que precisa ser dito sempre do mesmo jeito, como preços, promoções e políticas.</li>
-          <li>Depois de salvar, teste na aba <b>Testar</b> (precisa de créditos na Anthropic).</li>
+          <li>Para testar, use um bloco “Resposta com IA” na aba Testar do editor de agentes (precisa de créditos na Anthropic).</li>
         </ul>
       </div>
     </div>
@@ -297,53 +203,6 @@ function ListEditor<T>({ items, onChange, empty, addLabel, render }: {
       ))}
       <button type="button" className="crm-btn secondary" onClick={() => onChange([...items, { ...empty }])}><Plus size={15} /> {addLabel}</button>
     </>
-  )
-}
-
-type ChatLine = Pick<WhatsappMessage, 'direction' | 'body'> & { note?: string }
-
-function TestTab({ menu, settings }: { menu: BotMenu; settings: AiSettings }) {
-  const [lines, setLines] = useState<ChatLine[]>([])
-  const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-
-  async function send(event: React.FormEvent) {
-    event.preventDefault()
-    const body = input.trim()
-    if (!body || loading) return
-    const next = [...lines, { direction: 'in' as const, body }]
-    setLines(next)
-    setInput('')
-    setLoading(true)
-    setError('')
-    const response = await simulateReply(menu, settings, next.map(({ direction, body }) => ({ direction, body })))
-    setLoading(false)
-    if (!response.ok) return setError(response.error)
-    const { result } = response
-    if (!result) return setLines([...next, { direction: 'out', body: '(sem resposta: menu e IA estão desligados)' }])
-    const notes = [result.source === 'ai' ? 'IA' : 'Menu', result.handoff && 'passaria para uma atendente', result.aiError && `IA falhou: ${result.aiError}`]
-    setLines([...next, { direction: 'out', body: result.reply, note: notes.filter(Boolean).join(' · ') }])
-  }
-
-  return (
-    <div className="crm-card" style={{ maxWidth: 640 }}>
-      <h2>Simular conversa</h2>
-      <p className="crm-sub" style={{ marginBottom: 12 }}>Usa o menu e a IA <b>salvos</b>. Nada é enviado no WhatsApp. Com a IA desligada, não gasta nada.</p>
-      {error && <div className="crm-alert error">{error}</div>}
-      <div className="crm-chat">
-        {lines.length === 0 && <p className="crm-empty">Escreva como se fosse uma cliente. Comece com “Oi” para ver o menu e depois responda com um número.</p>}
-        {lines.map((l, i) => (
-          <div key={i} className={`crm-bubble ${l.direction}`}>{l.body}{l.note && <small>{l.note}</small>}</div>
-        ))}
-        {loading && <div className="crm-bubble out">digitando…</div>}
-      </div>
-      <form className="crm-chat-input" onSubmit={send}>
-        <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Mensagem da cliente" />
-        <button className="crm-btn" disabled={loading}><Send size={15} /></button>
-        <button type="button" className="crm-btn secondary" onClick={() => setLines([])} aria-label="Recomeçar"><RotateCcw size={15} /></button>
-      </form>
-    </div>
   )
 }
 

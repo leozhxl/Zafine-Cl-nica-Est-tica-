@@ -1,10 +1,9 @@
 import crypto from 'node:crypto'
 import { after, NextResponse, type NextRequest } from 'next/server'
-import { isWithinBusinessHours, sendWhatsappText } from '@/lib/ai-whatsapp'
-import type { AiSettings, BotMenu, Client, WhatsappMessage } from '@/lib/crm'
+import { generateReply, isWithinBusinessHours, sendWhatsappText } from '@/lib/ai-whatsapp'
+import type { AiSettings, Client, WhatsappMessage } from '@/lib/crm'
 import { handleInbound } from '@/lib/agent-engine'
 import { type StoredRun, aiDeps, applyEffects, getActiveAgent } from '@/lib/agent-runtime'
-import { botReply } from '@/lib/whatsapp-bot'
 import { createServiceClient } from '@/lib/supabase/server'
 
 type IncomingMessage = { from: string; id: string; type: string; text?: { body: string } }
@@ -72,9 +71,8 @@ async function handleMessage(message: IncomingMessage, profileName?: string) {
   if (insertError?.code === '23505') return
   if (insertError) throw insertError
 
-  const [{ data: ai }, { data: menu }, { data: recent }] = await Promise.all([
+  const [{ data: ai }, { data: recent }] = await Promise.all([
     supabase.from('ai_settings').select('*').eq('id', 1).single<AiSettings>(),
-    supabase.from('bot_menu').select('*').eq('id', 1).maybeSingle<BotMenu>(),
     supabase.from('whatsapp_messages').select('*').eq('client_id', client.id).order('created_at', { ascending: false }).limit(20),
   ])
   const history = ((recent ?? []) as WhatsappMessage[]).reverse()
@@ -88,7 +86,7 @@ async function handleMessage(message: IncomingMessage, profileName?: string) {
     await supabase.from('agent_runs').delete().eq('client_id', client.id)
   }
 
-  // Agente em blocos ativo tem prioridade; se ele não responder, cai no menu/IA.
+  // O agente ativo responde primeiro; se ele não responder, a IA responde sozinha (se ligada).
   const agent = await getActiveAgent(supabase)
   if (agent) {
     const { data: run } = await supabase.from('agent_runs').select('*').eq('client_id', client.id).maybeSingle<StoredRun>()
@@ -100,15 +98,11 @@ async function handleMessage(message: IncomingMessage, profileName?: string) {
     if (effects) return applyEffects(supabase, client, effects)
   }
 
-  const aiAllowed = !!ai?.enabled && !(ai.outside_hours_only && isWithinBusinessHours(ai))
-  if (!ai || (!menu?.enabled && !aiAllowed)) return
+  if (!ai?.enabled || (ai.outside_hours_only && isWithinBusinessHours(ai))) return
 
-  const result = await botReply({ menu: menu ?? { enabled: false, welcome: '', options: [], footer: '', fallback: '' }, ai, aiAllowed, history })
-  if (result?.aiError) console.error('[whatsapp] IA falhou, usando o menu:', result.aiError)
-  if (!result) return
+  const { reply, needsHuman } = await generateReply(ai, history)
+  const waId = await sendWhatsappText(phone, reply)
+  await supabase.from('whatsapp_messages').insert({ client_id: client.id, phone, direction: 'out', body: reply, from_ai: true, wa_message_id: waId })
 
-  const waId = await sendWhatsappText(phone, result.reply)
-  await supabase.from('whatsapp_messages').insert({ client_id: client.id, phone, direction: 'out', body: result.reply, from_ai: true, wa_message_id: waId })
-
-  if (result.handoff) await supabase.from('clients').update({ ai_paused: true, updated_at: new Date().toISOString() }).eq('id', client.id)
+  if (needsHuman) await supabase.from('clients').update({ ai_paused: true, updated_at: new Date().toISOString() }).eq('id', client.id)
 }
