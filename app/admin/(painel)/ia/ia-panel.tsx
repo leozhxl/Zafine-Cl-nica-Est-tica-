@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ArrowDown, ArrowUp, Plus, RotateCcw, Send, Trash2 } from 'lucide-react'
 import { type AiSettings, type BotMenu, type Client, type MenuOption, type WhatsappMessage, formatPhone, menuMessage } from '@/lib/crm'
+import { type Agent, blockInfo } from '@/lib/agent-flow'
 import { createClient } from '@/lib/supabase/client'
 import { sendManualMessage, simulateReply } from './actions'
 
@@ -384,6 +385,21 @@ function ConversationsTab() {
 
   useEffect(() => { if (selected) loadMessages(selected) }, [selected, loadMessages])
 
+  // Em qual bloco do agente a cliente está.
+  const [agentStatus, setAgentStatus] = useState('')
+  useEffect(() => {
+    setAgentStatus('')
+    if (!selected) return
+    createClient().from('agent_runs').select('status, node_id, wait_until, agents(name, flow)').eq('client_id', selected).maybeSingle().then(({ data }) => {
+      const run = data as { status: string; node_id: string | null; wait_until: string | null; agents: Pick<Agent, 'name' | 'flow'> | null } | null
+      if (!run?.agents) return
+      if (run.status === 'done') return setAgentStatus(`Agente “${run.agents.name}”: fluxo concluído`)
+      const node = run.agents.flow.nodes.find((n) => n.id === run.node_id)
+      const until = run.wait_until ? ` até ${new Date(run.wait_until).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : ''
+      setAgentStatus(`Agente “${run.agents.name}”: ${node ? blockInfo[node.data.kind].label.toLowerCase() : 'aguardando'}${until}`)
+    })
+  }, [selected, messages.length])
+
   const current = threads.find((t) => t.client.id === selected)?.client
 
   async function toggleAi() {
@@ -423,7 +439,7 @@ function ConversationsTab() {
         {!current ? <p className="crm-empty">Selecione uma conversa.</p> : (
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
-              <div><div className="crm-name">{current.name}</div><div className="crm-sub">{formatPhone(current.phone)}</div></div>
+              <div><div className="crm-name">{current.name}</div><div className="crm-sub">{formatPhone(current.phone)}{agentStatus && ` · ${agentStatus}`}</div></div>
               <button className="crm-btn secondary" onClick={toggleAi}>{current.ai_paused ? 'Devolver para o robô' : 'Assumir atendimento'}</button>
             </div>
             {error && <div className="crm-alert error">{error}</div>}

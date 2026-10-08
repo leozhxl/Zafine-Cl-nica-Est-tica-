@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Bot, CalendarDays, Columns3, LayoutDashboard, LogOut, Menu, Users } from 'lucide-react'
+import { Bot, CalendarDays, Columns3, LayoutDashboard, LogOut, Menu, Users, Workflow } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 const links = [
@@ -11,6 +11,7 @@ const links = [
   { href: '/admin/clientes', label: 'Clientes', icon: Users },
   { href: '/admin/funil', label: 'Funil', icon: Columns3 },
   { href: '/admin/agenda', label: 'Agenda', icon: CalendarDays },
+  { href: '/admin/agentes', label: 'Agentes', icon: Workflow },
   { href: '/admin/ia', label: 'WhatsApp', icon: Bot },
 ]
 

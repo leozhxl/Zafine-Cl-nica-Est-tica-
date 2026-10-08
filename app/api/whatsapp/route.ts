@@ -2,6 +2,8 @@ import crypto from 'node:crypto'
 import { after, NextResponse, type NextRequest } from 'next/server'
 import { isWithinBusinessHours, sendWhatsappText } from '@/lib/ai-whatsapp'
 import type { AiSettings, BotMenu, Client, WhatsappMessage } from '@/lib/crm'
+import { handleInbound } from '@/lib/agent-engine'
+import { type StoredRun, aiDeps, applyEffects, getActiveAgent } from '@/lib/agent-runtime'
 import { botReply } from '@/lib/whatsapp-bot'
 import { createServiceClient } from '@/lib/supabase/server'
 
@@ -82,6 +84,20 @@ async function handleMessage(message: IncomingMessage, profileName?: string) {
     const previous = history.at(-2)
     if (!previous || Date.now() - new Date(previous.created_at).getTime() < 24 * 3600000) return
     await supabase.from('clients').update({ ai_paused: false }).eq('id', client.id)
+    // Conversa nova: o agente recomeça do início.
+    await supabase.from('agent_runs').delete().eq('client_id', client.id)
+  }
+
+  // Agente em blocos ativo tem prioridade; se ele não responder, cai no menu/IA.
+  const agent = await getActiveAgent(supabase)
+  if (agent) {
+    const { data: run } = await supabase.from('agent_runs').select('*').eq('client_id', client.id).maybeSingle<StoredRun>()
+    const effects = await handleInbound(
+      { agentId: agent.id, flow: agent.flow, run, clientName: client.name, history },
+      message.text!.body,
+      await aiDeps(supabase),
+    )
+    if (effects) return applyEffects(supabase, client, effects)
   }
 
   const aiAllowed = !!ai?.enabled && !(ai.outside_hours_only && isWithinBusinessHours(ai))

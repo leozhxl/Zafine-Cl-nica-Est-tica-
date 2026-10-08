@@ -15,3 +15,6 @@ node_modules
 .next/
 .DS_Store
 *.tsbuildinfo
+
+# Exportações do Qontrol (dados de clientes — nunca commitar)
+importar-qontrol/
