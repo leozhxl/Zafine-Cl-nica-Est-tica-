@@ -51,7 +51,7 @@ export default async function DashboardPage() {
       <div className="crm-grid cols-4" style={{ marginBottom: 16 }}>
         <div className="crm-card crm-stat"><span>Leads no mês</span><strong>{monthLeads.length}</strong><small>{all.length} contatos no total</small></div>
         <div className="crm-card crm-stat"><span>Conversão do mês</span><strong>{conversion}%</strong><small>{monthClosed} viraram clientes</small></div>
-        <div className="crm-card crm-stat"><span>Sessões em 7 dias</span><strong>{sessions.length}</strong><small>sem contar canceladas</small></div>
+        <div className="crm-card crm-stat"><span>Sessões em 7 dias</span><strong>{sessions.length}</strong><small>{sessions.filter((a) => a.created_by === 'agente').length} marcadas pelo agente 🤖</small></div>
         <div className="crm-card crm-stat"><span>Respostas automáticas</span><strong>{aiReplies ?? 0}</strong><small>neste mês</small></div>
       </div>
 
@@ -64,7 +64,7 @@ export default async function DashboardPage() {
                 <li key={a.id}>
                   <div>
                     <div className="crm-name">{a.clients?.name}</div>
-                    <div className="crm-sub">{a.treatment}{a.professional ? ` · ${a.professional}` : ''}</div>
+                    <div className="crm-sub">{a.treatment}{a.professional ? ` · ${a.professional}` : ''}{a.created_by === 'agente' ? ' · 🤖 agente' : ''}</div>
                   </div>
                   <span className="crm-sub">{new Date(a.starts_at).toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
                 </li>

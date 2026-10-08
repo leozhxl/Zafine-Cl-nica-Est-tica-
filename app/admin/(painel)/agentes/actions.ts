@@ -2,7 +2,7 @@
 
 import type { Flow, RunState } from '@/lib/agent-flow'
 import { handleInbound, handleTimeout } from '@/lib/agent-engine'
-import { aiDeps } from '@/lib/agent-runtime'
+import { buildDeps } from '@/lib/agent-runtime'
 import type { WhatsappMessage } from '@/lib/crm'
 import { createClient } from '@/lib/supabase/server'
 
@@ -17,7 +17,7 @@ export async function simulateAgent(flow: Flow, run: (RunState & { agent_id: str
   const history = conversation.map((m, i) => ({ ...m, id: String(i), client_id: null, phone: '', from_ai: false, created_at: '' }))
   const input = { agentId: 'simulacao', flow, run, clientName, history }
   try {
-    const deps = await aiDeps(supabase)
+    const deps = await buildDeps(supabase, { simulate: true })
     const effects = text === null ? await handleTimeout(input, deps) : await handleInbound(input, text, deps)
     return { ok: true as const, effects }
   } catch (error) {

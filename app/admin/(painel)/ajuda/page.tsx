@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Bot, Flag, GitBranch, Hourglass, MessageSquare, Play, Sparkles } from 'lucide-react'
+import { Bot, CalendarCheck, Flag, GitBranch, Hourglass, MessageSquare, Play, Sparkles } from 'lucide-react'
 import { blockInfo } from '@/lib/agent-flow'
 
 export const metadata = { title: 'Ajuda · CRM Zafine' }
@@ -10,6 +10,7 @@ const sections = [
   { id: 'agentes', label: 'Agentes' },
   { id: 'blocos', label: 'Os blocos, um por um' },
   { id: 'testar', label: 'Testar e ativar um agente' },
+  { id: 'agendamento', label: 'Agendamento automático' },
   { id: 'ia', label: 'IA e roteiro' },
   { id: 'conversas', label: 'Conversas e atendimento humano' },
   { id: 'crm', label: 'Clientes, funil e agenda' },
@@ -65,6 +66,17 @@ const blocks = [
     ],
   },
   {
+    kind: 'schedule' as const, icon: CalendarCheck,
+    what: 'Conversa com a cliente para marcar uma sessão direto na agenda, oferecendo só horários livres.',
+    how: [
+      'Pergunta o serviço (ou usa um serviço fixo, se você escolher um), depois mostra os próximos dias com vaga, os horários livres do dia e pede confirmação.',
+      'A cliente pode responder com o número, com o nome (“laser”, “amanhã”, “sexta”) ou digitando o horário (“14h”, “9:30”).',
+      'Antes de gravar, ele confere a agenda de novo. Se o horário acabou de ser ocupado, oferece outro.',
+      'Saída “Agendou”: a sessão foi marcada (com 🤖 na agenda) e o tratamento de interesse da cliente é salvo.',
+      'Saída “Desistiu / sem horário”: a cliente digitou 0 ou “cancelar”, ou não havia horários livres. Normalmente leva para uma atendente.',
+    ],
+  },
+  {
     kind: 'action' as const, icon: Flag,
     what: 'Faz algo no CRM sem enviar mensagem.',
     how: [
@@ -85,6 +97,15 @@ const problems = [
       'Veja se a conversa está com 👤 (atendimento assumido pela equipe). Nesse caso o robô fica quieto de propósito.',
       'Áudios, fotos, figurinhas e documentos não são respondidos automaticamente. Só mensagens de texto.',
       'Se o Início estiver em “Primeira mensagem” e a cliente já passou pelo fluxo, o agente não fala de novo. Troque para “Qualquer mensagem”.',
+    ],
+  },
+  {
+    q: 'O agente diz que não tem horários livres.',
+    a: [
+      'Confira em Agenda → Horários e serviços se os dias da semana estão marcados como abertos e com o horário certo.',
+      'Veja se a duração do serviço cabe no horário: um serviço de 60 minutos não cabe numa janela de 30.',
+      'Confira “Até quantos dias à frente” e os feriados bloqueados.',
+      'A agenda pode estar realmente cheia. Aumente “Atendimentos ao mesmo tempo” se a clínica atende mais de uma cliente por horário.',
     ],
   },
   {
@@ -210,6 +231,20 @@ export default function AjudaPage() {
               <li>O botão ↻ recomeça a conversa de teste.</li>
               <li>Para ativar: marque <b>Ativo</b> no topo do editor e clique em <b>Salvar alterações</b>. O Início precisa estar ligado a algum bloco.</li>
               <li>Se você tentar sair do editor sem salvar, o navegador avisa.</li>
+            </ul>
+          </section>
+
+          <section id="agendamento" className="crm-card">
+            <h2><CalendarCheck size={18} style={{ verticalAlign: -3 }} /> Agendamento automático</h2>
+            <p>O agente pode marcar consultas sozinho, sem IA e sem custo, usando o bloco <b>Agendar consulta</b>. O jeito mais rápido de começar é criar um agente com o modelo <b>Agendamento de avaliação</b>.</p>
+            <ul>
+              <li><b>Configure primeiro:</b> em <Link href="/admin/agenda/horarios">Agenda → Horários e serviços</Link>, defina os dias e horários de atendimento, o almoço, os feriados e a duração de cada serviço.</li>
+              <li><b>Atendimentos ao mesmo tempo:</b> se a clínica atende duas clientes no mesmo horário (duas salas ou profissionais), coloque 2. Com 1, o agente nunca marca duas sessões que se sobreponham.</li>
+              <li><b>Antecedência mínima:</b> evita que o agente marque algo para daqui a 10 minutos. O padrão é 2 horas.</li>
+              <li><b>O agente respeita a agenda real:</b> qualquer sessão marcada pela equipe (que não esteja cancelada) ocupa o horário. Para segurar um horário sem cliente, crie uma sessão nele.</li>
+              <li><b>Como saber o que o agente marcou:</b> as sessões aparecem na <Link href="/admin/agenda">Agenda</Link> com 🤖, e dá para filtrar só por elas. O Painel mostra quantas foram marcadas pelo agente.</li>
+              <li><b>Teste à vontade:</b> no Testar do editor, o agente consulta a agenda de verdade, mas <b>não grava nada</b>.</li>
+              <li><b>Remarcar e cancelar</b> continua com a equipe: a cliente fala com uma atendente e a sessão é ajustada na Agenda.</li>
             </ul>
           </section>
 

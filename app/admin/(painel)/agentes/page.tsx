@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Copy, Pencil, Plus, Trash2, X } from 'lucide-react'
-import { type Agent, emptyFlow, templateFlow } from '@/lib/agent-flow'
+import { type Agent, emptyFlow, schedulingTemplateFlow, templateFlow } from '@/lib/agent-flow'
 import { createClient } from '@/lib/supabase/client'
 
 export default function AgentesPage() {
@@ -44,8 +44,9 @@ export default function AgentesPage() {
     load()
   }
 
-  async function create(name: string, template: boolean) {
-    const { data, error } = await createClient().from('agents').insert({ name, flow: template ? templateFlow() : emptyFlow() }).select('id').single()
+  async function create(name: string, template: Template) {
+    const flow = template === 'agendamento' ? schedulingTemplateFlow() : template === 'atendimento' ? templateFlow() : emptyFlow()
+    const { data, error } = await createClient().from('agents').insert({ name, flow }).select('id').single()
     if (error) return setError(error.message)
     router.push(`/admin/agentes/${data.id}`)
   }
@@ -96,9 +97,13 @@ export default function AgentesPage() {
   )
 }
 
-function NewAgentModal({ onClose, onCreate }: { onClose: () => void; onCreate: (name: string, template: boolean) => void }) {
-  const [name, setName] = useState('Atendimento')
-  const [template, setTemplate] = useState(true)
+type Template = 'agendamento' | 'atendimento' | 'branco'
+const templateNames: Record<Template, string> = { agendamento: 'Agendamento de avaliação', atendimento: 'Atendimento', branco: 'Novo agente' }
+
+function NewAgentModal({ onClose, onCreate }: { onClose: () => void; onCreate: (name: string, template: Template) => void }) {
+  const [template, setTemplate] = useState<Template>('agendamento')
+  const [name, setName] = useState(templateNames.agendamento)
+  const choose = (t: Template) => { setTemplate(t); setName(templateNames[t]) }
   return (
     <div className="crm-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <form className="crm-modal" onSubmit={(e) => { e.preventDefault(); onCreate(name, template) }}>
@@ -108,8 +113,9 @@ function NewAgentModal({ onClose, onCreate }: { onClose: () => void; onCreate: (
         </div>
         <div className="crm-form">
           <label className="crm-field full">Nome<input value={name} onChange={(e) => setName(e.target.value)} required autoFocus /></label>
-          <label className="crm-check full"><input type="radio" checked={template} onChange={() => setTemplate(true)} /> Começar pelo modelo de atendimento (boas-vindas, opções, agendar, atendente e lembrete)</label>
-          <label className="crm-check full"><input type="radio" checked={!template} onChange={() => setTemplate(false)} /> Começar em branco</label>
+          <label className="crm-check full"><input type="radio" checked={template === 'agendamento'} onChange={() => choose('agendamento')} /> <span><b>Agendamento de avaliação</b> (recomendado): aborda o lead, mostra os horários livres da agenda e marca a consulta sozinho</span></label>
+          <label className="crm-check full"><input type="radio" checked={template === 'atendimento'} onChange={() => choose('atendimento')} /> <span><b>Atendimento</b>: boas-vindas, tratamentos e passar para a equipe agendar</span></label>
+          <label className="crm-check full"><input type="radio" checked={template === 'branco'} onChange={() => choose('branco')} /> <span>Começar em branco</span></label>
         </div>
         <div className="crm-modal-foot"><div>
           <button type="button" className="crm-btn secondary" onClick={onClose}>Cancelar</button>

@@ -24,6 +24,7 @@ export type Appointment = {
   duration_min: number
   status: AppointmentStatus
   notes: string | null
+  created_by?: 'equipe' | 'agente'
   clients?: Pick<Client, 'name' | 'phone'> | null
 }
 

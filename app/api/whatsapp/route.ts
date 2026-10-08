@@ -3,7 +3,7 @@ import { after, NextResponse, type NextRequest } from 'next/server'
 import { generateReply, isWithinBusinessHours, sendWhatsappText } from '@/lib/ai-whatsapp'
 import type { AiSettings, Client, WhatsappMessage } from '@/lib/crm'
 import { handleInbound } from '@/lib/agent-engine'
-import { type StoredRun, aiDeps, applyEffects, getActiveAgent } from '@/lib/agent-runtime'
+import { type StoredRun, applyEffects, buildDeps, getActiveAgent } from '@/lib/agent-runtime'
 import { createServiceClient } from '@/lib/supabase/server'
 
 type IncomingMessage = { from: string; id: string; type: string; text?: { body: string } }
@@ -93,7 +93,7 @@ async function handleMessage(message: IncomingMessage, profileName?: string) {
     const effects = await handleInbound(
       { agentId: agent.id, flow: agent.flow, run, clientName: client.name, history },
       message.text!.body,
-      await aiDeps(supabase),
+      await buildDeps(supabase, { clientId: client.id }),
     )
     if (effects) return applyEffects(supabase, client, effects)
   }

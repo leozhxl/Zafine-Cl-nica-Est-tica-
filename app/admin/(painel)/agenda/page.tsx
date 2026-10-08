@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react'
+import Link from 'next/link'
+import { Bot, ChevronLeft, ChevronRight, Plus, Settings2, X } from 'lucide-react'
 import { type Appointment, type Client, appointmentStatuses, treatments } from '@/lib/crm'
 import { createClient } from '@/lib/supabase/client'
 
@@ -27,6 +28,14 @@ export default function AgendaPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [clients, setClients] = useState<Pick<Client, 'id' | 'name'>[]>([])
   const [editing, setEditing] = useState<Partial<Appointment> | null>(null)
+  const [onlyAgent, setOnlyAgent] = useState(false)
+  const [services, setServices] = useState<{ name: string; duration_min: number }[]>([])
+
+  useEffect(() => {
+    createClient().from('services').select('name, duration_min').eq('active', true).order('sort').then(({ data, error }) => setServices(error ? [] : data ?? []))
+  }, [])
+  const shown = onlyAgent ? appointments.filter((a) => a.created_by === 'agente') : appointments
+  const byAgent = appointments.filter((a) => a.created_by === 'agente' && a.status !== 'cancelado').length
 
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => new Date(weekStart.getTime() + i * DAY)), [weekStart])
 
@@ -50,7 +59,8 @@ export default function AgendaPage() {
   function newAt(day: Date) {
     const d = new Date(day)
     d.setHours(9, 0, 0, 0)
-    setEditing({ starts_at: d.toISOString(), duration_min: 60, status: 'agendado', treatment: treatments[0] })
+    const first = services[0]
+    setEditing({ starts_at: d.toISOString(), duration_min: first?.duration_min ?? 60, status: 'agendado', treatment: first?.name ?? treatments[0] })
   }
 
   const label = `${days[0].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} – ${days[6].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}`
@@ -58,15 +68,18 @@ export default function AgendaPage() {
   return (
     <>
       <div className="crm-header">
-        <div><h1>Agenda</h1><p>{appointments.filter((a) => a.status !== 'cancelado').length} sessões nesta semana</p></div>
+        <div><h1>Agenda</h1><p>{appointments.filter((a) => a.status !== 'cancelado').length} sessões nesta semana · {byAgent} marcadas pelo agente 🤖</p></div>
         <div className="crm-week-nav">
           <button className="crm-btn secondary" onClick={() => setWeekStart(new Date(weekStart.getTime() - 7 * DAY))} aria-label="Semana anterior"><ChevronLeft size={16} /></button>
           <strong>{label}</strong>
           <button className="crm-btn secondary" onClick={() => setWeekStart(new Date(weekStart.getTime() + 7 * DAY))} aria-label="Próxima semana"><ChevronRight size={16} /></button>
           <button className="crm-btn secondary" onClick={() => setWeekStart(startOfWeek(new Date()))}>Hoje</button>
           <button className="crm-btn" onClick={() => newAt(new Date())}><Plus size={16} /> Agendar</button>
+          <Link className="crm-btn secondary" href="/admin/agenda/horarios"><Settings2 size={16} /> Horários e serviços</Link>
         </div>
       </div>
+
+      <label className="crm-check" style={{ marginBottom: 12 }}><input type="checkbox" checked={onlyAgent} onChange={(e) => setOnlyAgent(e.target.checked)} /> <Bot size={15} /> Mostrar só as sessões marcadas pelo agente</label>
 
       <div className="crm-days">
         {days.map((day) => (
@@ -75,9 +88,9 @@ export default function AgendaPage() {
               <span>{day.toLocaleDateString('pt-BR', { weekday: 'short' })} <strong>{day.getDate()}</strong></span>
               <button className="crm-icon-btn" onClick={() => newAt(day)} aria-label="Agendar neste dia"><Plus size={15} /></button>
             </div>
-            {appointments.filter((a) => sameDay(new Date(a.starts_at), day)).map((a) => (
+            {shown.filter((a) => sameDay(new Date(a.starts_at), day)).map((a) => (
               <button key={a.id} className={`crm-appt ${a.status}`} onClick={() => setEditing(a)}>
-                <b>{time(a.starts_at)} · {a.clients?.name}</b>
+                <b>{time(a.starts_at)} · {a.clients?.name}{a.created_by === 'agente' && <span title="Agendado pelo agente"> 🤖</span>}</b>
                 {a.treatment}{a.professional ? ` · ${a.professional}` : ''}
               </button>
             ))}
@@ -85,14 +98,15 @@ export default function AgendaPage() {
         ))}
       </div>
 
-      {editing && <AppointmentModal appointment={editing} clients={clients} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load() }} />}
+      {editing && <AppointmentModal appointment={editing} clients={clients} services={services} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load() }} />}
     </>
   )
 }
 
-function AppointmentModal({ appointment, clients, onClose, onSaved }: {
+function AppointmentModal({ appointment, clients, services, onClose, onSaved }: {
   appointment: Partial<Appointment>
   clients: Pick<Client, 'id' | 'name'>[]
+  services: { name: string; duration_min: number }[]
   onClose: () => void
   onSaved: () => void
 }) {
@@ -146,8 +160,13 @@ function AppointmentModal({ appointment, clients, onClose, onSaved }: {
             </select>
           </label>
           <label className="crm-field">Tratamento
-            <select value={form.treatment} onChange={(e) => set('treatment', e.target.value)}>
-              {treatments.map((t) => <option key={t} value={t}>{t}</option>)}
+            <select value={form.treatment} onChange={(e) => {
+              set('treatment', e.target.value)
+              const service = services.find((s) => s.name === e.target.value)
+              if (service && !form.id) set('duration_min', service.duration_min)
+            }}>
+              {(services.length ? services.map((s) => s.name) : treatments).map((t) => <option key={t} value={t}>{t}</option>)}
+              {form.treatment && !(services.length ? services.map((s) => s.name) : treatments).includes(form.treatment) && <option value={form.treatment}>{form.treatment}</option>}
             </select>
           </label>
           <label className="crm-field">Profissional<input value={form.professional ?? ''} onChange={(e) => set('professional', e.target.value)} /></label>

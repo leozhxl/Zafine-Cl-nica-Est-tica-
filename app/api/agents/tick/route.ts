@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import type { Agent } from '@/lib/agent-flow'
 import { handleTimeout } from '@/lib/agent-engine'
-import { type StoredRun, aiDeps, applyEffects } from '@/lib/agent-runtime'
+import { type StoredRun, applyEffects, buildDeps } from '@/lib/agent-runtime'
 import type { Client, WhatsappMessage } from '@/lib/crm'
 import { createServiceClient } from '@/lib/supabase/server'
 
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       ])
       if (!agent?.enabled || !client?.phone || client.ai_paused) continue
       const history = ((recent ?? []) as WhatsappMessage[]).reverse()
-      const effects = await handleTimeout({ agentId: agent.id, flow: agent.flow, run, clientName: client.name, history }, await aiDeps(supabase))
+      const effects = await handleTimeout({ agentId: agent.id, flow: agent.flow, run, clientName: client.name, history }, await buildDeps(supabase, { clientId: client.id }))
       if (effects) await applyEffects(supabase, client, effects)
       processed++
     } catch (error) {

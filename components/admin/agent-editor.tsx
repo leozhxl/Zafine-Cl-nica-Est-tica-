@@ -8,14 +8,14 @@ import {
   type Connection, type Edge, type EdgeChange, type Node, type NodeChange, type NodeProps,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { ArrowLeft, Bot, Flag, GitBranch, Hourglass, MessageSquare, Play, Plus, RotateCcw, Save, Send, Sparkles, Timer, Trash2 } from 'lucide-react'
+import { ArrowLeft, Bot, CalendarCheck, Flag, GitBranch, Hourglass, MessageSquare, Play, Plus, RotateCcw, Save, Send, Sparkles, Timer, Trash2 } from 'lucide-react'
 import { simulateAgent } from '@/app/admin/(painel)/agentes/actions'
-import { type Agent, type Flow, type NodeData, type RunState, actionLabels, blockInfo, defaultData, newId } from '@/lib/agent-flow'
+import { type Agent, type Flow, type NodeData, type RunState, DEFAULT_SUCCESS, actionLabels, blockInfo, defaultData, newId } from '@/lib/agent-flow'
 import { stageLabel, stages, treatments } from '@/lib/crm'
 import { createClient } from '@/lib/supabase/client'
 
 type BlockNode = Node<NodeData>
-const icons = { start: Play, message: MessageSquare, wait: Hourglass, condition: GitBranch, ai: Sparkles, action: Flag }
+const icons = { start: Play, message: MessageSquare, wait: Hourglass, condition: GitBranch, ai: Sparkles, schedule: CalendarCheck, action: Flag }
 
 // Bloco em que a simulação está parada, para destacar no desenho.
 const RunningNode = createContext<string | null>(null)
@@ -27,6 +27,7 @@ function summary(data: NodeData) {
     case 'wait': return data.timeoutMinutes ? `Tempo limite: ${formatMinutes(data.timeoutMinutes)}` : 'Sem tempo limite'
     case 'condition': return `${data.branches.length} opç${data.branches.length === 1 ? 'ão' : 'ões'}`
     case 'ai': return 'Responde usando o roteiro da aba Conversas → IA'
+    case 'schedule': return data.service ? `Serviço: ${data.service}` : 'Pergunta o serviço, o dia e o horário'
     case 'action':
       if (data.action === 'set_stage') return `${actionLabels.set_stage}: ${stageLabel(data.value as never)}`
       if (data.action === 'set_interest') return `${actionLabels.set_interest}: ${data.value || 'resposta da cliente'}`
@@ -44,6 +45,7 @@ function outputs(data: NodeData): { id: string | null; label?: string }[] {
   switch (data.kind) {
     case 'wait': return [{ id: 'reply', label: 'Respondeu' }, ...(data.timeoutMinutes ? [{ id: 'timeout', label: 'Sem resposta' }] : [])]
     case 'condition': return [...data.branches.map((b) => ({ id: b.id, label: b.label || 'Opção' })), { id: 'else', label: 'Nenhuma das opções' }]
+    case 'schedule': return [{ id: 'booked', label: 'Agendou' }, { id: 'exit', label: 'Desistiu / sem horário' }]
     case 'action': return data.action === 'handoff' || data.action === 'end' ? [] : [{ id: null }]
     default: return [{ id: null }]
   }
@@ -304,6 +306,8 @@ function BlockProps({ node, onChange, onRemove }: { node: BlockNode; onChange: (
         </p>
       )}
 
+      {data.kind === 'schedule' && <ScheduleProps data={data} onChange={onChange} />}
+
       {data.kind === 'action' && (
         <>
           <label className="crm-field">O que fazer
@@ -336,6 +340,35 @@ function BlockProps({ node, onChange, onRemove }: { node: BlockNode; onChange: (
 
       {data.kind !== 'start' && <button type="button" className="crm-btn danger" onClick={onRemove}><Trash2 size={15} /> Apagar bloco</button>}
     </div>
+  )
+}
+
+function ScheduleProps({ data, onChange }: { data: Extract<NodeData, { kind: 'schedule' }>; onChange: (d: NodeData) => void }) {
+  const [services, setServices] = useState<string[] | null>(null)
+  useEffect(() => {
+    createClient().from('services').select('name').eq('active', true).order('sort').then(({ data: rows, error }) => setServices(error ? [] : (rows ?? []).map((r) => r.name as string)))
+  }, [])
+  return (
+    <>
+      <p className="crm-sub" style={{ margin: 0, lineHeight: 1.5 }}>
+        Conversa com a cliente para escolher serviço, dia e horário, mostrando só horários livres da agenda, e marca a sessão (com a marca “agendado pelo agente”).
+        A cliente pode digitar <b>0</b> ou “cancelar” a qualquer momento para sair pela saída “Desistiu / sem horário”.
+      </p>
+      {services && !services.length && <div className="crm-alert">Cadastre os serviços em <Link href="/admin/agenda/horarios" style={{ color: 'var(--blue)' }}>Agenda → Horários e serviços</Link>.</div>}
+      <label className="crm-field">Serviço
+        <select value={data.service} onChange={(e) => onChange({ ...data, service: e.target.value })}>
+          <option value="">Perguntar para a cliente</option>
+          {(services ?? []).map((s) => <option key={s} value={s}>{s}</option>)}
+          {data.service && services && !services.includes(data.service) && <option value={data.service}>{data.service} (não encontrado)</option>}
+        </select>
+      </label>
+      <label className="crm-field">Mensagem de confirmação
+        <small>Enviada depois de marcar. Use {'{nome}'}, {'{servico}'}, {'{data}'} e {'{hora}'}.</small>
+        <textarea rows={5} value={data.successText} onChange={(e) => onChange({ ...data, successText: e.target.value })} />
+      </label>
+      {data.successText !== DEFAULT_SUCCESS && <button type="button" className="crm-btn ghost" onClick={() => onChange({ ...data, successText: DEFAULT_SUCCESS })}>Voltar ao texto padrão</button>}
+      <p className="crm-sub" style={{ margin: 0, lineHeight: 1.5 }}>Os dias, horários, almoço e duração de cada serviço vêm de <Link href="/admin/agenda/horarios" style={{ color: 'var(--blue)' }}>Agenda → Horários e serviços</Link>.</p>
+    </>
   )
 }
 
@@ -378,6 +411,7 @@ function Tester({ flow, onNode }: { flow: Flow; onNode: (id: string | null) => v
     if (!res.effects) return setLines([...conversation, { direction: 'out', body: '(o agente não responde: com o Início em “Primeira mensagem”, ele só fala uma vez com cada cliente. Clique em ↻ para recomeçar.)' }])
     const fx = res.effects
     const notes = [
+      fx.booked && `📅 marcaria ${fx.booked.service} em ${fx.booked.date.split('-').reverse().slice(0, 2).join('/')} às ${fx.booked.time} (no teste não grava na agenda)`,
       fx.clientPatch.stage && `funil → ${stageLabel(fx.clientPatch.stage)}`,
       fx.clientPatch.interest && `interesse → ${fx.clientPatch.interest}`,
       fx.clientPatch.ai_paused && 'passou para atendente',
