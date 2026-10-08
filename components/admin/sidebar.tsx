@@ -3,16 +3,22 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { CalendarDays, CircleHelp, Columns3, LayoutDashboard, LogOut, Menu, MessageCircle, Users, Workflow } from 'lucide-react'
+import { CalendarDays, ChartColumn, CircleHelp, Columns3, LayoutDashboard, ListTodo, LogOut, Megaphone, Menu, MessageCircle, MonitorDot, Route, Users, Workflow, Zap } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 const links = [
   { href: '/admin', label: 'Painel', icon: LayoutDashboard },
-  { href: '/admin/clientes', label: 'Clientes', icon: Users },
-  { href: '/admin/funil', label: 'Funil', icon: Columns3 },
-  { href: '/admin/agenda', label: 'Agenda', icon: CalendarDays },
-  { href: '/admin/agentes', label: 'Agentes', icon: Workflow },
+  { href: '/admin/jornada', label: 'Sua jornada', icon: Route },
   { href: '/admin/conversas', label: 'Conversas', icon: MessageCircle },
+  { href: '/admin/monitor', label: 'Monitor de chat', icon: MonitorDot },
+  { href: '/admin/agentes', label: 'Agentes', icon: Workflow },
+  { href: '/admin/clientes', label: 'Clientes', icon: Users },
+  { href: '/admin/agenda', label: 'Agenda', icon: CalendarDays },
+  { href: '/admin/funil', label: 'Funil', icon: Columns3 },
+  { href: '/admin/tarefas', label: 'Tarefas', icon: ListTodo },
+  { href: '/admin/campanhas', label: 'Campanhas', icon: Megaphone },
+  { href: '/admin/relatorios', label: 'Relatórios', icon: ChartColumn },
+  { href: '/admin/automacoes', label: 'Automações', icon: Zap },
   { href: '/admin/ajuda', label: 'Ajuda', icon: CircleHelp },
 ]
 

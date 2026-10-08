@@ -29,6 +29,7 @@ export function ClientModal({ client, onClose, onSaved }: Props) {
       interest: form.interest || null,
       notes: form.notes || null,
       ai_paused: form.ai_paused,
+      ...('marketing_opt_out' in form ? { marketing_opt_out: !!form.marketing_opt_out } : {}),
       updated_at: new Date().toISOString(),
     }
     const supabase = createClient()
@@ -77,6 +78,7 @@ export function ClientModal({ client, onClose, onSaved }: Props) {
           </label>
           <label className="crm-field full">Observações<textarea value={form.notes ?? ''} onChange={(e) => set('notes', e.target.value)} /></label>
           <label className="crm-check full"><input type="checkbox" checked={!!form.ai_paused} onChange={(e) => set('ai_paused', e.target.checked)} /> Pausar respostas automáticas para este contato (atendimento humano)</label>
+          {'marketing_opt_out' in form && <label className="crm-check full"><input type="checkbox" checked={!!form.marketing_opt_out} onChange={(e) => set('marketing_opt_out', e.target.checked)} /> Não receber campanhas (pediu para não receber promoções)</label>}
         </div>
         <div className="crm-modal-foot">
           {form.id && <button type="button" className="crm-btn danger" onClick={remove}>Excluir</button>}

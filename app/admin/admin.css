@@ -199,3 +199,18 @@
 .crm-help-content ol { list-style: decimal; }
 .crm-help-content li::marker { color: var(--blue); }
 .crm-help-block h3 { font-weight: 700; }
+
+/* Relatórios */
+.crm-segmented { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: white; }
+.crm-segmented button { all: unset; cursor: pointer; padding: 8px 14px; font-size: 13px; font-weight: 700; color: var(--muted); }
+.crm-segmented button.active { background: var(--navy); color: white; }
+.crm-columns-plot { display: flex; align-items: flex-end; gap: 2px; height: 180px; border-bottom: 1px solid var(--line); background: repeating-linear-gradient(to top, transparent 0 44px, #eef3f4 44px 45px); }
+.crm-column-bar { position: relative; flex: 1; height: 100%; display: flex; align-items: flex-end; cursor: default; }
+.crm-column-bar span { display: block; width: 100%; min-height: 0; background: var(--accent); border-radius: 4px 4px 0 0; }
+.crm-column-bar:hover span { background: var(--navy); }
+.crm-column-bar:hover::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: var(--navy); color: white; font-size: 12px; padding: 4px 8px; border-radius: 6px; white-space: nowrap; z-index: 2; pointer-events: none; }
+.crm-columns-axis { display: flex; gap: 2px; margin-top: 4px; }
+.crm-columns-axis span { flex: 1; font-size: 10.5px; color: var(--muted); text-align: center; white-space: nowrap; overflow: visible; }
+.crm-list li > strong { color: var(--navy); }
+.crm-sidebar nav { overflow-y: auto; min-height: 0; }
+.crm-nav-link { padding: 8px 12px; }

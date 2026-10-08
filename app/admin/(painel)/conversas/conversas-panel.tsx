@@ -16,7 +16,7 @@ const tabs: { value: Tab; label: string }[] = [
   { value: 'conexao', label: 'Conexão com o WhatsApp' },
 ]
 
-export function ConversasPanel({ status, webhookUrl, initialTab }: { status: Status; webhookUrl: string; initialTab: Tab }) {
+export function ConversasPanel({ status, webhookUrl, initialTab, initialClient }: { status: Status; webhookUrl: string; initialTab: Tab; initialClient?: string }) {
   const [tab, setTab] = useState<Tab>(initialTab)
   const [settings, setSettings] = useState<AiSettings | null>(null)
 
@@ -43,7 +43,7 @@ export function ConversasPanel({ status, webhookUrl, initialTab }: { status: Sta
         {tabs.map((t) => <button key={t.value} className={tab === t.value ? 'active' : ''} onClick={() => setTab(t.value)}>{t.label}</button>)}
       </div>
 
-      {tab === 'conversas' && <ConversationsTab />}
+      {tab === 'conversas' && <ConversationsTab initialClient={initialClient} />}
       {tab === 'ia' && (settings ? <ConfigTab settings={settings} onChange={setSettings} status={status} /> : <p className="crm-empty">Carregando…</p>)}
       {tab === 'conexao' && <div style={{ maxWidth: 720 }}><IntegrationCard status={status} webhookUrl={webhookUrl} /></div>}
     </>
@@ -208,9 +208,9 @@ function ListEditor<T>({ items, onChange, empty, addLabel, render }: {
 
 type Thread = { client: Pick<Client, 'id' | 'name' | 'phone' | 'ai_paused'>; last: WhatsappMessage }
 
-function ConversationsTab() {
+function ConversationsTab({ initialClient }: { initialClient?: string }) {
   const [threads, setThreads] = useState<Thread[]>([])
-  const [selected, setSelected] = useState<string | null>(null)
+  const [selected, setSelected] = useState<string | null>(initialClient ?? null)
   const [messages, setMessages] = useState<WhatsappMessage[]>([])
   const [reply, setReply] = useState('')
   const [error, setError] = useState('')

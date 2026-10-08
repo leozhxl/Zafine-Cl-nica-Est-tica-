@@ -14,6 +14,12 @@ const sections = [
   { id: 'ia', label: 'IA e roteiro' },
   { id: 'conversas', label: 'Conversas e atendimento humano' },
   { id: 'crm', label: 'Clientes, funil e agenda' },
+  { id: 'jornada', label: 'Sua jornada' },
+  { id: 'monitor', label: 'Monitor de chat' },
+  { id: 'tarefas', label: 'Tarefas' },
+  { id: 'automacoes', label: 'Automações' },
+  { id: 'campanhas', label: 'Campanhas' },
+  { id: 'relatorios', label: 'Relatórios' },
   { id: 'problemas', label: 'Problemas comuns' },
   { id: 'dicas', label: 'Boas práticas' },
 ]
@@ -286,6 +292,64 @@ export default function AjudaPage() {
               <li><Link href="/admin/agenda">Agenda</Link>: sessões por semana. Clique em um dia para agendar e em uma sessão para editar ou mudar o status.</li>
               <li>Em qualquer cliente dá para marcar “Pausar respostas automáticas”, que tem o mesmo efeito de assumir o atendimento.</li>
             </ul>
+          </section>
+
+          <section id="jornada" className="crm-card">
+            <h2>Sua jornada</h2>
+            <p>Uma lista com os passos para deixar o atendimento automático funcionando: proteger o acesso, cadastrar a equipe, configurar horários, criar e ativar o agente, conectar o WhatsApp. <b>Os passos se marcam sozinhos</b> conforme você configura. Volte nela sempre que não souber o próximo passo.</p>
+          </section>
+
+          <section id="monitor" className="crm-card">
+            <h2>Monitor de chat</h2>
+            <p>Um quadro ao vivo com as conversas das últimas 24 horas, atualizado a cada 10 segundos e dividido em quatro colunas:</p>
+            <ul>
+              <li><b>👤 Atendimento humano:</b> a equipe assumiu e o robô está pausado.</li>
+              <li><b>⏳ Sem resposta:</b> a última mensagem é da cliente. Olhe essas primeiro.</li>
+              <li><b>🤖 Com o robô:</b> o agente está esperando a resposta dela.</li>
+              <li><b>✅ Respondidas:</b> sem pendência.</li>
+            </ul>
+            <p>Cada cartão mostra quanto falta para fechar a <b>janela de 24h</b> do WhatsApp (fica vermelho quando faltam menos de 2 horas). Depois disso, só dá para falar com ela usando um modelo aprovado. Clique no cartão para abrir a conversa.</p>
+          </section>
+
+          <section id="tarefas" className="crm-card">
+            <h2>Tarefas</h2>
+            <ul>
+              <li>Lembretes do que a equipe precisa fazer: ligar, confirmar sessão, dar retorno. Cada tarefa pode ter cliente, prazo e responsável.</li>
+              <li>As abas mostram as abertas, as do dia, as atrasadas (em vermelho) e as concluídas. Marque a caixinha para concluir.</li>
+              <li>Automações também criam tarefas (aparecem com 🤖 “automação”).</li>
+            </ul>
+          </section>
+
+          <section id="automacoes" className="crm-card">
+            <h2>Automações</h2>
+            <p>Regras do tipo <b>“quando isso acontecer, faça aquilo”</b>, conferidas a cada minuto. Cada uma roda uma única vez por acontecimento.</p>
+            <ul>
+              <li><b>Quando:</b> chega um lead novo; a cliente entra numa etapa do funil; uma sessão é agendada; X horas antes de uma sessão; X horas depois de uma sessão realizada.</li>
+              <li><b>Faça:</b> enviar mensagem no WhatsApp; enviar um modelo aprovado; criar uma tarefa; mover no funil.</li>
+              <li>Use {'{nome}'}, {'{servico}'}, {'{data}'} e {'{hora}'} nos textos.</li>
+              <li><b>Mensagem livre só chega a quem escreveu nas últimas 24h.</b> Para lembretes de sessão, use “Enviar modelo aprovado”.</li>
+              <li>Clientes com atendimento humano em andamento não recebem mensagens automáticas.</li>
+              <li>Leads, mudanças de etapa e agendamentos de antes da automação existir não disparam. Lembretes valem para todas as sessões futuras.</li>
+              <li>“Depois da sessão” só vale para sessões marcadas como <b>Realizado</b> na Agenda.</li>
+              <li>Em “Últimas execuções” você vê o que aconteceu e os erros (por exemplo, “WhatsApp não conectado”).</li>
+              <li>Cuidado com regras que se desfazem: “entrou em Contatado → mover para Novo” e “entrou em Novo → mover para Contatado” ficam se alternando.</li>
+            </ul>
+          </section>
+
+          <section id="campanhas" className="crm-card">
+            <h2>Campanhas</h2>
+            <ul>
+              <li>Envio em massa para um grupo de clientes, filtrado por etapa do funil, tratamento de interesse e origem. O número de quem vai receber aparece na hora.</li>
+              <li><b>Precisa de um modelo aprovado pela Meta</b> (WhatsApp Manager → Modelos de mensagem). Informe o nome exato do modelo, o idioma e as variáveis na mesma ordem do modelo ({'{{1}}'}, {'{{2}}'}…).</li>
+              <li>O “Texto do modelo” serve só para o histórico em Conversas: copie o texto do modelo trocando as variáveis por {'{nome}'} etc.</li>
+              <li>Dá para enviar agora ou agendar. O envio é feito aos poucos (25 por minuto) e o progresso aparece na lista. Uma campanha em andamento pode ser cancelada.</li>
+              <li>Clientes marcadas com <b>“Não receber campanhas”</b> (no cadastro do cliente) ficam de fora. Respeite quem pedir para não receber: além de ser o correto, a Meta pode bloquear números com muitas denúncias.</li>
+            </ul>
+          </section>
+
+          <section id="relatorios" className="crm-card">
+            <h2>Relatórios</h2>
+            <p>Números e gráficos do período escolhido (7, 30 ou 90 dias): novos leads por dia, de onde vieram, como está o funil, sessões por serviço e por status, taxa de comparecimento, quantas sessões o agente marcou e o volume de mensagens, automações e campanhas. Passe o mouse nas barras para ver os valores.</p>
           </section>
 
           <section id="problemas" className="crm-card">

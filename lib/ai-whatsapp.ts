@@ -93,14 +93,32 @@ export function isWithinBusinessHours(settings: AiSettings, now = new Date()) {
   return time >= settings.hours_start.slice(0, 5) && time < settings.hours_end.slice(0, 5)
 }
 
-export async function sendWhatsappText(to: string, body: string) {
+async function postWhatsapp(payload: Record<string, unknown>) {
+  if (!process.env.WHATSAPP_TOKEN || !process.env.WHATSAPP_PHONE_NUMBER_ID) throw new Error('WhatsApp não conectado (faltam WHATSAPP_TOKEN e WHATSAPP_PHONE_NUMBER_ID).')
   const version = process.env.WHATSAPP_API_VERSION || 'v23.0'
   const res = await fetch(`https://graph.facebook.com/${version}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'text', text: { body } }),
+    body: JSON.stringify({ messaging_product: 'whatsapp', ...payload }),
   })
   if (!res.ok) throw new Error(`WhatsApp API ${res.status}: ${await res.text()}`)
   const data = (await res.json()) as { messages?: { id: string }[] }
   return data.messages?.[0]?.id ?? null
+}
+
+export function sendWhatsappText(to: string, body: string) {
+  return postWhatsapp({ to, type: 'text', text: { body } })
+}
+
+/** Modelo aprovado pela Meta: único jeito de iniciar conversa fora da janela de 24h. */
+export function sendWhatsappTemplate(to: string, name: string, language: string, params: string[]) {
+  return postWhatsapp({
+    to,
+    type: 'template',
+    template: {
+      name,
+      language: { code: language },
+      ...(params.length ? { components: [{ type: 'body', parameters: params.map((text) => ({ type: 'text', text: text || '-' })) }] } : {}),
+    },
+  })
 }

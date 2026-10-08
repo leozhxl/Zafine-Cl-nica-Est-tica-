@@ -11,6 +11,7 @@ export type Client = {
   interest: string | null
   notes: string | null
   ai_paused: boolean
+  marketing_opt_out?: boolean
   created_at: string
   updated_at: string
 }

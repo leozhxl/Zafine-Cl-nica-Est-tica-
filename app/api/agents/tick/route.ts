@@ -2,10 +2,12 @@ import { NextResponse, type NextRequest } from 'next/server'
 import type { Agent } from '@/lib/agent-flow'
 import { handleTimeout } from '@/lib/agent-engine'
 import { type StoredRun, applyEffects, buildDeps } from '@/lib/agent-runtime'
+import { runAutomations, runCampaigns } from '@/lib/automations'
 import type { Client, WhatsappMessage } from '@/lib/crm'
 import { createServiceClient } from '@/lib/supabase/server'
 
-// Chamado a cada minuto pelo pg_cron do Supabase: dispara os blocos "Aguardar" cujo tempo acabou.
+// Chamado a cada minuto pelo pg_cron do Supabase: dispara os blocos "Aguardar" cujo tempo acabou,
+// as automações e as campanhas agendadas.
 export async function POST(request: NextRequest) {
   const secret = process.env.CRON_SECRET
   if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) {
@@ -51,5 +53,11 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ processed })
+  // Automações e campanhas não podem derrubar os lembretes dos agentes (nem o contrário).
+  let automations = 0
+  let campaignMessages = 0
+  try { automations = await runAutomations(supabase) } catch (error) { console.error('[automations]', error) }
+  try { campaignMessages = await runCampaigns(supabase) } catch (error) { console.error('[campaigns]', error) }
+
+  return NextResponse.json({ processed, automations, campaignMessages })
 }
