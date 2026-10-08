@@ -37,7 +37,12 @@ export type WhatsappMessage = {
   created_at: string
 }
 
+export type ScriptStep = { title: string; instruction: string }
+export type FaqItem = { question: string; answer: string }
+
 export type AiSettings = {
+  script_steps?: ScriptStep[]
+  faq?: FaqItem[]
   enabled: boolean
   assistant_name: string
   instructions: string

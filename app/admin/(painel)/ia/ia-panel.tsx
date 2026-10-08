@@ -164,6 +164,8 @@ function ConfigTab({ settings, onChange, status }: { settings: AiSettings; onCha
   const [message, setMessage] = useState<{ type: 'ok' | 'error'; text: string } | null>(null)
   const [saving, setSaving] = useState(false)
   const set = <K extends keyof AiSettings>(key: K, value: AiSettings[K]) => setForm((f) => ({ ...f, [key]: value }))
+  // As colunas do roteiro só existem depois de rodar supabase/roteiro.sql.
+  const hasScript = 'script_steps' in settings
 
   async function save(event: React.FormEvent) {
     event.preventDefault()
@@ -188,6 +190,49 @@ function ConfigTab({ settings, onChange, status }: { settings: AiSettings; onCha
             <small>Como ela deve se comportar, o que deve ou não falar, qual o objetivo da conversa.</small>
             <textarea rows={6} value={form.instructions} onChange={(e) => set('instructions', e.target.value)} />
           </label>
+        </div>
+
+        <h2 style={{ marginTop: 26 }}>Roteiro da conversa</h2>
+        {!hasScript ? (
+          <div className="crm-alert">Para montar o roteiro, rode o arquivo <b>supabase/roteiro.sql</b> no SQL Editor do Supabase e recarregue a página.</div>
+        ) : (
+          <>
+            <p className="crm-sub" style={{ margin: '0 0 12px', lineHeight: 1.6 }}>
+              <b>Etapas:</b> a sequência que a IA segue em toda conversa, uma etapa por vez. Se a cliente perguntar algo no meio, a IA responde e volta para o roteiro.
+            </p>
+            <ListEditor
+              items={form.script_steps ?? []}
+              onChange={(items) => set('script_steps', items)}
+              empty={{ title: '', instruction: '' }}
+              addLabel="Adicionar etapa"
+              render={(step, update) => (
+                <>
+                  <input value={step.title} onChange={(e) => update({ title: e.target.value })} placeholder="Nome da etapa (ex.: Perguntar o nome)" />
+                  <textarea rows={2} value={step.instruction} onChange={(e) => update({ instruction: e.target.value })} placeholder="O que a IA deve fazer ou dizer nesta etapa" style={{ marginTop: 8 }} />
+                </>
+              )}
+            />
+
+            <p className="crm-sub" style={{ margin: '22px 0 12px', lineHeight: 1.6 }}>
+              <b>Respostas prontas:</b> quando a cliente perguntar algo parecido, a IA responde com o seu texto.
+            </p>
+            <ListEditor
+              items={form.faq ?? []}
+              onChange={(items) => set('faq', items)}
+              empty={{ question: '', answer: '' }}
+              addLabel="Adicionar resposta pronta"
+              render={(item, update) => (
+                <>
+                  <input value={item.question} onChange={(e) => update({ question: e.target.value })} placeholder="Pergunta da cliente (ex.: Quanto custa?)" />
+                  <textarea rows={3} value={item.answer} onChange={(e) => update({ answer: e.target.value })} placeholder="Resposta que a IA deve dar" style={{ marginTop: 8 }} />
+                </>
+              )}
+            />
+          </>
+        )}
+
+        <h2 style={{ marginTop: 26 }}>Informações e regras</h2>
+        <div className="crm-form">
           <label className="crm-field full">Informações da clínica
             <small>Tratamentos, preços, endereço, horários, formas de pagamento, perguntas frequentes. A IA só responde com base no que estiver aqui.</small>
             <textarea rows={12} value={form.knowledge} onChange={(e) => set('knowledge', e.target.value)} />
@@ -211,8 +256,46 @@ function ConfigTab({ settings, onChange, status }: { settings: AiSettings; onCha
           A IA é opcional e paga por uso (créditos na Anthropic). Com o menu ligado, ela só responde quando a cliente escreve algo que não é uma opção do menu.
           Se a IA falhar (por exemplo, sem créditos), o robô responde com o menu.
         </p>
+        <h2 style={{ marginTop: 20 }}>Dicas para o roteiro</h2>
+        <ul className="crm-sub" style={{ lineHeight: 1.7, paddingLeft: 18, margin: 0 }}>
+          <li>Escreva cada etapa como uma ordem curta: “Pergunte…”, “Explique…”, “Convide…”.</li>
+          <li>Na etapa em que a equipe deve assumir, escreva “passe para uma atendente”.</li>
+          <li>Use as respostas prontas para o que precisa ser dito sempre do mesmo jeito, como preços, promoções e políticas.</li>
+          <li>Depois de salvar, teste na aba <b>Testar</b> (precisa de créditos na Anthropic).</li>
+        </ul>
       </div>
     </div>
+  )
+}
+
+function ListEditor<T>({ items, onChange, empty, addLabel, render }: {
+  items: T[]
+  onChange: (items: T[]) => void
+  empty: T
+  addLabel: string
+  render: (item: T, update: (patch: Partial<T>) => void) => React.ReactNode
+}) {
+  const move = (index: number, delta: number) => {
+    const next = [...items]
+    const [item] = next.splice(index, 1)
+    next.splice(index + delta, 0, item)
+    onChange(next)
+  }
+  return (
+    <>
+      {items.map((item, i) => (
+        <div key={i} className="crm-card" style={{ padding: 14, marginBottom: 10, background: '#fafcfc', display: 'flex', gap: 10 }}>
+          <span className="crm-badge" style={{ alignSelf: 'flex-start', marginTop: 8 }}>{i + 1}</span>
+          <div style={{ flex: 1, minWidth: 0 }}>{render(item, (patch) => onChange(items.map((it, j) => (j === i ? { ...it, ...patch } : it))))}</div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <button type="button" className="crm-icon-btn" disabled={i === 0} onClick={() => move(i, -1)} aria-label="Subir"><ArrowUp size={15} /></button>
+            <button type="button" className="crm-icon-btn" disabled={i === items.length - 1} onClick={() => move(i, 1)} aria-label="Descer"><ArrowDown size={15} /></button>
+            <button type="button" className="crm-icon-btn" onClick={() => onChange(items.filter((_, j) => j !== i))} aria-label="Remover"><Trash2 size={15} /></button>
+          </div>
+        </div>
+      ))}
+      <button type="button" className="crm-btn secondary" onClick={() => onChange([...items, { ...empty }])}><Plus size={15} /> {addLabel}</button>
+    </>
   )
 }
 
